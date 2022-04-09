@@ -1,0 +1,106 @@
+Turbo Assembler	 Version 2.02	     08/14/92 08:54:15	    Page 1
+C:\TC\tick3.asm
+
+
+
+      1	0000			     seg_a   segment byte public
+      2					     assume  cs:seg_a, ds:seg_a
+      3					     org     100h
+      4	0100			     msg     proc    far
+      5
+      6	0100  EB 67 90		     start:  jmp     zac
+      7
+      8	0103  00000000		     oldh    dd	     00000h
+      9	0107  20 50 72 69 73 6C	61+  text    db	     ' Prisla sprava', 13, 10, '$'
+     10	      20 73 70 72 61 76	61+
+     11	      0D 0A 24
+     12	0118  20 4F 73 74 61 76	61+  text2   db	     ' Ostavam v pam„ti', 13, 10, '$'
+     13	      6D 20 76 20 70 61	6D+
+     14	      84 74 69 0D 0A 24
+     15	012C  30		     count   db	     '0'
+     16
+     17	012D			     msg     endp
+     18
+     19	012D			     int2F   proc    far
+     20	012D  50			     push    ax
+     21	012E  06			     push    es
+     22	012F  B8 B800			     mov     ax,0B800h
+     23	0132  8E C0			     mov     es,ax
+     24	0134  B8 7900			     mov     ax,7900h
+     25	0137  02 06 012Cr		     add     al,byte ptr count
+     26	013B  26: A3 009E		     mov     es:009eh,ax
+     27	013F  FE 06 012Cr		     inc     count
+     28	0143  80 3E 012Cr 39		     cmp     count, '9'
+     29	0148  76 05			     jbe     pokr
+     30	014A  C6 06 012Cr 30		     mov     count,'0'
+     31	014F  07		     pokr:   pop     es
+     32	0150  58			     pop     ax
+     33	0151  3D 7A85			     cmp     ax,7A85h
+     34	0154  74 05			     je	     mess
+     35	0156  2E: FF 2E	0103r		     jmp     cs:oldh
+     36	015B			     int2F   endp
+     37
+     38	015B  B4 09		     mess:   mov     ah,9
+     39	015D  FB			     sti
+     40	015E  52			     push    dx
+     41	015F  BA 0107r			     mov     dx,offset text
+     42	0162  CD 21			     int     21h
+     43	0164  5A			     pop dx
+     44	0165  FB			     sti
+     45	0166  33 C9			     xor     cx,cx
+     46	0168  CF			     iret
+     47
+     48	0169  FA		     zac:    cli
+     49	016A  B8 352F			     mov     ax,352Fh
+     50	016D  CD 21			     int     21h
+     51	016F  89 1E 0103r		     mov     word ptr oldh,bx
+     52	0173  8C 06 0105r		     mov     word ptr oldh+2,es
+     53	0177  BA 012Dr			     mov     dx,offset int2F
+     54	017A  B8 252F			     mov     ax,252Fh
+     55	017D  CD 21			     int     21h
+     56	017F  FB			     sti
+     57	0180  B4 09			     mov     ah,9
+Turbo Assembler	 Version 2.02	     08/14/92 08:54:15	    Page 2
+C:\TC\tick3.asm
+
+
+
+     58	0182  BA 0118r			     mov     dx,offset text2
+     59	0185  CD 21			     int     21h
+     60	0187  BA 0A60			     mov     dx,0a60h
+     61	018A  CD 27			     int     27h
+     62
+     63	018C			     seg_a   ends
+     64
+     65					     end     start
+Turbo Assembler	 Version 2.02	     08/14/92 08:54:15	    Page 3
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "08/14/92"
+??FILENAME			  Text	 "tick3	  "
+??TIME				  Text	 "08:54:15"
+??VERSION			  Number 0202
+@CPU				  Text	 0101H
+@CURSEG				  Text	 SEG_A
+@FILENAME			  Text	 TICK3
+@WORDSIZE			  Text	 2
+COUNT				  Byte	 SEG_A:012C
+INT2F				  Far	 SEG_A:012D
+MESS				  Near	 SEG_A:015B
+MSG				  Far	 SEG_A:0100
+OLDH				  Dword	 SEG_A:0103
+POKR				  Near	 SEG_A:014F
+START				  Near	 SEG_A:0100
+TEXT				  Byte	 SEG_A:0107
+TEXT2				  Byte	 SEG_A:0118
+ZAC				  Near	 SEG_A:0169
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+SEG_A				  16  018C Byte	  Public
+

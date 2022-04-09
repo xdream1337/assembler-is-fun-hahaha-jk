@@ -1,0 +1,6 @@
+riadok cislo 1
+riadok cislo 2
+riadok cislo 3
+riadok cislo 4
+riadok cislo 5
+riadok cislo 6
