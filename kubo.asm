@@ -97,12 +97,11 @@ PRINT_STRING	ENDP
 
 COUNT_NEWLINES  PROC
             	MOV BX, OFFSET buffer
-            	MOV CX, BYTES_READ		; How many characters were read
+            	MOV CX, BYTES_READ			; How many characters were read
 
-				MOV AX, 10				; Line feed ( new line )
+				MOV AX, 10					; Line feed ( new line )
 
             	@@LOOP1:
-
 				TEST CX, CX
 				JZ @@EXIT	
 
@@ -154,13 +153,13 @@ GET_TO_LINE		PROC
 				DEC CX
             	JMP @@LOOP1
 
-				@@FULL:
-				MOV DX, 10
-				MOV AH, 02h
+				@@FULL:				; Print all lines
+				MOV DX, 10			; Set the cursor position to row 1 and column 0
+				MOV AH, 02h			
 				int 21h
 
             	@@SAVE_VALUE:
-				MOV FILEPOS, BX
+				MOV FILEPOS, BX		; Save the cursor position
 				XOR AX, AX			; ZF=1 aby sme vedeli ze sme dosiahli pozadovany riadok	
 
             	@@EXIT:
@@ -171,27 +170,26 @@ GET_TO_LINE 	ENDP
 MAIN_FUNCTION 	PROC
 				MOV COUNTER, 0
 				MOV LINES, 0
-				@@COUNT_LOOP:			; Pocitame celkovy pocet riadkov v subore
 
-				CALL FILE_READ
-				JZ @@RESET_FILE
-				CALL COUNT_NEWLINES
-
-				JMP @@COUNT_LOOP		
+				@@COUNT_NEWLINES:			; Get number of newlines in file
+				CALL FILE_READ				; Read the file
+				JZ @@RESET_FILE				; We read the whole file, jump to reset file
+				CALL COUNT_NEWLINES			; Count newlines in current buffer
+				JMP @@COUNT_LOOP			; Read another 200 characters
 
 				@@RESET_FILE:
-				CALL FILE_CLOSE				; Skoncili sme s pocitanim riadkov
+				CALL FILE_CLOSE				; We ended counting new lines, let's find Nth last line
 				CALL FILE_OPEN				; Ideme hladat N-ty riadok
 
 				MOV AX, LINES
 				MOV LINES_TO_SKIP, AX		; Nakopiruj Lines do Lines_to_skip
 
-				MOV AX, N_LINES				; Nacitaj Nko do AX
-				SUB LINES_TO_SKIP, AX		; Odpocitaj od celkoveho poctu riadkov Nko - kolko riadkov treba preskocit
-				MOV AX, LINES_TO_SKIP
-				CMP AX, 0
-				JL @@ERR
-				JMP @@FIND_POSITION
+				MOV AX, N_LINES				; Load N_LINES to AX
+				SUB LINES_TO_SKIP, AX		; LINES_TO_SKIP (LINES) - N_LINES - calculate how many lines to skip
+				MOV AX, LINES_TO_SKIP		; Move LINES_TO_SKIP to AX
+				CMP AX, 0					; Check if line exists
+				JL @@ERR					; Line does not exist
+				JMP @@FIND_POSITION			; Find position of the line
 
 				@@FIND_POSITION:
 				CALL FILE_READ
@@ -224,8 +222,8 @@ MAIN_FUNCTION	ENDP
 
 INPUT_N_LINES	PROC
 
-				MOV dl, 10  
-				MOV bl, 0 
+				MOV DL, 10  
+				MOV BL, 0 
 
 				@@SCAN_NUM:
       			MOV AH, 01h     	; STDIN
