@@ -2,7 +2,7 @@ LOCALS @@
 .MODEL SMALL
 .STACK 300h
 ;TODO: What the fuck, 20 bytes a rozjebava pocitanie riadkov
-;TODO: Zadanie vacsieho cisla ako 9
+;TODO: Zadanie vacsieho cisla ako 9 - DONE :-)
 ;TODO: Viacere subory ( extrn )
 ;TODO: ostrenie chyb
 ;TODO: dostatocna technicka dokumentacia v anglictine ( komentare )  
@@ -22,14 +22,11 @@ FILEPOS     	DW 0
 LINE_ROW    	DW 0
 MSG	    		DB "Zadaj N: $", 13, 10
 ERR_MSG_N		DB "Zadany riadok neexistuje", 13, 10, '$'
-ARG_LENGTH		equ ds:[80h]
+ERR_NOT_FOUND   DB "Vyskytla sa chyba so suborom, ukoncujem program!", 13, 10, '$'
 ;-------------------------------------------------------------
 
 
 .CODE 
-
-
-
 
 
 NEW_LINE		MACRO
@@ -42,32 +39,45 @@ NEW_LINE		MACRO
 
 
 FILE_OPEN   	PROC
-            	MOV AX, 3D00H               ; Prepare for opening file for reading
-            	MOV DX, OFFSET FILENAME     ; Prepare file name 
-            	INT 21H                     ; DOS API - interrupt open file
-            	MOV FILEHANDLE, AX        ; Store the file handler in FILEHANDLE variable
+            	MOV AX, 3D00H              		; Prepare for opening file for reading
+            	MOV DX, OFFSET FILENAME     	; Prepare file name 
+            	INT 21H                     	; DOS API - interrupt open file
+
+				JC @@FILE_ERROR					; Jump if there is problem with file
+
+				@@SAVE_FILENAME:
+            	MOV FILEHANDLE, AX        		; Store the file handler in FILEHANDLE variable
             	RET
+
+				@@FILE_ERROR:
+				NEW_LINE						; Print new line
+				MOV DX, OFFSET ERR_NOT_FOUND	; Move error msg string to DX
+				MOV AH, 9H						; Set AH to 9H to print error message
+				INT 21H							; Interrupt to print the message
+				MOV AX, 4C00H					; Save 4C00H to terminate program
+        		INT 21H							; Terminate the program
+				RET
 FILE_OPEN   	ENDP
 
 
 FILE_CLOSE  	PROC
             	MOV AX, 3e00h               ; Prepare file for closing
-            	MOV BX, FILEHANDLE        ; Move file handler to BX
-            	INT 21H                     ; Close the file
+            	MOV BX, FILEHANDLE        	; Move file handler to BX
+            	INT 21H                    	; Close the file
             	RET
 FILE_CLOSE  	ENDP
 
 
 FILE_READ   	PROC
             	MOV AX, 3F00h               ; Prepare for file read
-            	MOV BX, FILEHANDLE        ; Move file handle to BX
+            	MOV BX, FILEHANDLE        	; Move file handle to BX
             	MOV CX, buffersize
             	MOV DX, OFFSET buffer       ;  
             	INT 21H
 
-            	MOV BYTES_READ, AX        ; Save how many bytes i've read
-            	CMP AX, 0                   
-            	JZ @@EXIT
+            	MOV BYTES_READ, AX        	; Save how many bytes i've read
+            	CMP AX, 0    				; If no bytes were read jump to exit               
+            	JZ @@EXIT					; Jump to exit
 
             	MOV BX, DX
             	ADD BX, BYTES_READ
@@ -87,9 +97,9 @@ PRINT_STRING	ENDP
 
 COUNT_NEWLINES  PROC
             	MOV BX, OFFSET buffer
-            	MOV CX, BYTES_READ	; How many characters were read
+            	MOV CX, BYTES_READ		; How many characters were read
 
-				MOV AX, 10			; Line feed ( new line )
+				MOV AX, 10				; Line feed ( new line )
 
             	@@LOOP1:
 
@@ -170,14 +180,14 @@ MAIN_FUNCTION 	PROC
 				JMP @@COUNT_LOOP		
 
 				@@RESET_FILE:
-				CALL FILE_CLOSE			; Skoncili sme s pocitanim riadkov
-				CALL FILE_OPEN			; Ideme hladat N-ty riadok
+				CALL FILE_CLOSE				; Skoncili sme s pocitanim riadkov
+				CALL FILE_OPEN				; Ideme hladat N-ty riadok
 
 				MOV AX, LINES
-				MOV LINES_TO_SKIP, AX	; Nakopiruj Lines do Lines_to_skip
+				MOV LINES_TO_SKIP, AX		; Nakopiruj Lines do Lines_to_skip
 
-				MOV AX, N_LINES			; Nacitaj Nko do AX
-				SUB LINES_TO_SKIP, AX			; Odpocitaj od celkoveho poctu riadkov Nko - kolko riadkov treba preskocit
+				MOV AX, N_LINES				; Nacitaj Nko do AX
+				SUB LINES_TO_SKIP, AX		; Odpocitaj od celkoveho poctu riadkov Nko - kolko riadkov treba preskocit
 				MOV AX, LINES_TO_SKIP
 				CMP AX, 0
 				JL @@ERR
@@ -214,49 +224,47 @@ MAIN_FUNCTION	ENDP
 
 INPUT_N_LINES	PROC
 
-				mov dl, 10  
-				mov bl, 0 
-
+				MOV dl, 10  
+				MOV bl, 0 
 
 				@@SCAN_NUM:
-      			mov ah, 01h     ; STDIN
-      			int 21h         ; INTerrupt pre stdin
+      			MOV AH, 01h     	; STDIN
+      			INT 21h         	; INTerrupt pre stdin
 				
-      			cmp al, 13      ; Check if user pressed ENTER KEY
-      			je  @@SAVE_NUM  ; save the number 
+      			CMP AL, 13      	; Check if user pressed ENTER KEY
+      			JE  @@SAVE_NUM  	; save the number 
 
-      			mov ah, 0  
-      			sub al, 48   ; ASCII to DECIMAL
+      			MOV AH, 0  
+      			SUB AL, 48   		; ASCII to DECIMAL
 
-      			mov cl, al
-      			mov al, bl   ; Store the previous value in AL
+      			MOV CL, AL
+      			MOV AL, BL  		; Store the previous value in AL
 
-      			mul dl       ; multiply the previous value with 10
+      			MUL DL       		; Multiply the previous value with 10
 
-      			add al, cl   ; previous value + new value ( after previous value is multiplyed with 10 )
-     			mov bl, al
+      			ADD AL, CL   		; Previous value + new value ( after previous value is multiplyed with 10 )
+     			MOV BL, AL			; Store the value to BL
 
-      			JMP @@SCAN_NUM 
+      			JMP @@SCAN_NUM 		; Scan another digit
 				
 				@@SAVE_NUM:
-				MOV N_LINES, BX
+				MOV N_LINES, BX		; Save the number to N_LINES
 				RET
 
 INPUT_N_LINES	ENDP
 
 START:      
-				MOV AX, @DATA
-        		MOV DS, AX
+				MOV AX, @DATA			; Move Data segment to AX
+        		MOV DS, AX				; Store AX to DS
 
-        		CALL FILE_OPEN
+        		CALL FILE_OPEN			; Open the file
 
 MAIN_LOOP:
-	    		MOV AH, 9					; Vypis Zadaj N spravy
+	    		MOV AH, 9				; Vypis Zadaj N spravy
 	    		MOV DX, OFFSET MSG
 	    		INT 21H
-
 	    		
-				CALL INPUT_N_LINES
+				CALL INPUT_N_LINES		; Scan number of N last lines to print
 	    		CALL MAIN_FUNCTION
 				CALL FILE_CLOSE
 				CALL FILE_OPEN
@@ -264,8 +272,8 @@ MAIN_LOOP:
         		JMP MAIN_LOOP
 
 EXIT:   		    
-				CALL FILE_CLOSE
-        		MOV AX, 4C00H
-        		INT 21H
+				CALL FILE_CLOSE			; Close the file
+        		MOV AX, 4C00H			; Prepare for terminating the program
+        		INT 21H					; Interrupt to terminate the program
         		END START
 
