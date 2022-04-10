@@ -1,6 +1,7 @@
 LOCALS @@
 .MODEL SMALL
 .STACK 300h
+.386
 ;TODO: What the fuck, 20 bytes a rozjebava pocitanie riadkov
 ;TODO: Zadanie vacsieho cisla ako 9
 ;TODO: Viacere subory ( extrn )
@@ -26,10 +27,21 @@ ARG_LENGTH		DB 0
 CMD_BUFFER		DB 128 dup('$')
 HELP			DB 0
 FILENAME_CMD	DB 0
+N_LINES_CMD		DB 0
+HELP_MSG		DB
 ;-------------------------------------------------------------
 
 
 .CODE 
+
+
+NEW_LINE		MACRO
+				MOV AH, 2H					; Prepare for character output
+				MOV DL, 13					; Move Carriage Return to DL register
+				INT 21H						; Interupt - DOS API 21H - CHARACTER STDOUT 2H
+				MOV DL, 10					; Move Line Feed to DL register
+				INT 21H						; Interupt - DOS API 21h - CHARACTER STDOUT 2H
+				ENDM
 
 
 INPUT_N_LINES	PROC
@@ -106,7 +118,6 @@ PARSE_PSP		PROC
 				XOR AX, AX
 				
 				mov si, offset CMD_BUFFER	; SI = pointer to the first character of parameter
-				mov DI, offset FILENAME
 				JMP @@LOOP_STRING
 
 
@@ -119,8 +130,8 @@ PARSE_PSP		PROC
 				JZ @@PARSE_HELP
 				CMP AL, 102
 				JZ @@PREPARE_TO_PARSE_FILENAME
-				;CMP AL, 110
-				;JZ @@PARSE_N_LINES
+				CMP AL, 110
+				JZ @@PREPARE_TO_PARSE_N_LINES
 
 				@@PARSE_HELP:
 				MOV HELP, 1
@@ -130,6 +141,13 @@ PARSE_PSP		PROC
 
 
 				@@END_FILENAME:
+				INC DI
+				MOV BYTE PTR DS:[DI], '$'
+				CMP CX, 0
+				JZ @@EXIT
+				JMP @@LOOP_STRING
+
+				@@END_N_LINES:
 				INC DI
 				MOV BYTE PTR DS:[DI], '$'
 				CMP CX, 0
@@ -154,11 +172,37 @@ PARSE_PSP		PROC
 
 
 				@@PREPARE_TO_PARSE_FILENAME:
+				MOV DI, offset FILENAME
 				MOV FILENAME_CMD, 1
 				INC SI
 				INC SI
 				DEC CX
 				DEC CX
+				JMP @@PARSE_FILENAME
+
+				@@PREPARE_TO_PARSE_N_LINES:
+				MOV DI, offset N_LINES
+				MOV N_LINES_CMD, 1
+				INC SI
+				INC SI
+				DEC CX
+				DEC CX
+				JMP @@PARSE_N_LINES
+
+				@@PARSE_N_LINES:
+				MOV AL, BYTE PTR DS:[SI]
+				INC SI
+				DEC CX
+				CMP AL, 45
+				JZ @@END_N_LINES
+				CMP AL, 32
+				JZ @@END_N_LINES
+				
+				MOV BYTE PTR DS:[DI], AL
+				INC DI
+
+				CMP CX, 0
+				JZ @@EXIT
 				JMP @@PARSE_FILENAME
 
 				@@LOOP_STRING:
@@ -188,11 +232,22 @@ START:
                 CALL GET_PSP
 				CALL PARSE_PSP
 
+HELP_MESSAGE:
+				MOV AH, 9
+				MOV DX, offset HELP_MSG
 
 EXIT:   		    
 				MOV AH, 9					; Vypis Zadaj N spravy
+	    		MOV DX, offset N_LINES
+	    		INT 21H
+				NEW_LINE
+				MOV AH, 9					; Vypis Zadaj N spravy
 	    		MOV DX, offset FILENAME
 	    		INT 21H
+				CMP HELP, 1
+				JZ @@HELP_MESSAGE
+
+TERMINATE:
         		MOV AX, 4C00H
         		INT 21H
         		END START
