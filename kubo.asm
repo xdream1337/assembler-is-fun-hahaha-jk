@@ -137,7 +137,7 @@ GET_TO_LINE		PROC
 
 				MOV AX, LINES_TO_SKIP
 				CMP AX, 0
-				JZ @@FULL
+				JL @@FULL
 				
 				MOV AX, 10
             	@@LOOP1:
@@ -161,14 +161,14 @@ GET_TO_LINE		PROC
 				DEC CX
             	JMP @@LOOP1
 
-				@@FULL:				; Print all lines
-				MOV DX, 10			; Set the cursor position to row 1 and column 0
+				@@FULL:					; Print all lines
+				MOV DX, 10				; Set the cursor position to row 1 and column 0
 				MOV AH, 02h			
 				int 21h
 
             	@@SAVE_VALUE:
-				MOV FILEPOS, BX		; Save the cursor position
-				XOR AX, AX			; ZF=1 aby sme vedeli ze sme dosiahli pozadovany riadok	
+				MOV FILEPOS, BX			; Save the cursor position
+				XOR AX, AX				; ZF=1 aby sme vedeli ze sme dosiahli pozadovany riadok	
 
             	@@EXIT:
             	RET
@@ -179,11 +179,11 @@ MAIN_FUNCTION 	PROC
 				MOV COUNTER, 0
 				MOV LINES, 0
 
-				@@COUNT_NEWLINES_LOOP:			; Get number of newlines in file
+				@@COUNT_NEWLINES_LOOP:		; Get number of newlines in file
 				CALL FILE_READ				; Read the file
 				JZ @@RESET_FILE				; We read the whole file, jump to reset file
 				CALL COUNT_NEWLINES			; Count newlines in current buffer
-				JMP @@COUNT_NEWLINES_LOOP			; Read another 200 characters
+				JMP @@COUNT_NEWLINES_LOOP	; Read another 200 characters
 
 				@@RESET_FILE:
 				CALL FILE_CLOSE				; We ended counting new lines, let's find Nth last line
@@ -229,6 +229,11 @@ MAIN_FUNCTION	ENDP
 
 INPUT_N_LINES	PROC
 
+				XOR DX, DX
+				XOR BX, BX
+				XOR CX, CX
+				XOR AX, AX
+
 				MOV DL, 10  
 				MOV BL, 0 
 
@@ -261,29 +266,29 @@ INPUT_N_LINES	ENDP
 
 
 GET_PSP			PROC
-				MOV AH, 62H                 ; ES wskazuje na segment PSP
-				INT 21H						; Get PSP address
+				MOV AH, 62H                 			; ES wskazuje na segment PSP
+				INT 21H									; Get PSP address
 				MOV ES,BX
 
-				MOV AX, SEG CMD_BUFFER      ; wstaw do DS:SI adres CMD_BUFFERa
+				MOV AX, SEG CMD_BUFFER      			; wstaw do DS:SI adres CMD_BUFFERa
 				MOV ds, AX
-				MOV si, offset CMD_BUFFER	; SI = pointer to the first character of parameters
+				MOV si, offset CMD_BUFFER				; SI = pointer to the first character of parameters
 
 				XOR AX, AX
-				MOV AL, BYTE PTR ES:[80H]    ; ustaw ileznakow na liczbe znakow przekazanych w parametrze PSP
-				MOV [ARG_LENGTH], AL		; Save the argument's string length
+				MOV AL, BYTE PTR ES:[80H]    			; ustaw ileznakow na liczbe znakow przekazanych w parametrze PSP
+				MOV [ARG_LENGTH], AL					; Save the argument's string length
 
 				MOV DI, 82h                 
-				XOR CX, CX                  ; Loop counter
-				MOV CL, BYTE PTR ES:[80h]   ; Number of bytes of the command line (is one to big)
-				SUB CX, 1                   ; Decrement the number of bytes
+				XOR CX, CX                  			; Loop counter
+				MOV CL, BYTE PTR ES:[80h]   			; Number of bytes of the command line (is one to big)
+				SUB CX, 1                   			; Decrement the number of bytes
 
 				@@P1:
-	 			MOV AL, BYTE PTR ES:[DI]     ; Load one character from PSP...
-    			MOV BYTE PTR DS:[SI], AL     ; ...and store it in CMD_BUFFER
-    			INC SI                      ; Increment the pointer to CMD_BUFFER
-    			INC DI                      ; Increment the pointer to PSP
-    			LOOP @@p1                   ; Repeat CX times
+	 			MOV AL, BYTE PTR ES:[DI]     			; Load one character from PSP...
+    			MOV BYTE PTR DS:[SI], AL    			; ...and store it in CMD_BUFFER
+    			INC SI                      			; Increment the pointer to CMD_BUFFER
+    			INC DI                      			; Increment the pointer to PSP
+    			LOOP @@p1                   			; Repeat CX times
 
 				RET
 GET_PSP			ENDP
@@ -296,6 +301,11 @@ PARSE_PSP		PROC
 				XOR SI, SI
 				XOR DI, DI
 				XOR AX, AX
+				XOR BX, BX
+				XOR DX, DX
+
+				MOV BL, 0
+				MOV DL, 10
 				
 				MOV SI, offset CMD_BUFFER				; SI = pointer to the first character of parameter
 				JMP @@LOOP_STRING
@@ -309,8 +319,8 @@ PARSE_PSP		PROC
 				JZ @@PARSE_HELP
 				CMP AL, 102
 				JZ @@PREPARE_TO_PARSE_FILENAME
-				;CMP AL, 110
-				;JZ @@PREPARE_TO_PARSE_N_LINES
+				CMP AL, 110
+				JZ @@PREPARE_TO_PARSE_N_LINES
 
 				@@PARSE_HELP:
 				MOV HELP, 1
@@ -326,8 +336,9 @@ PARSE_PSP		PROC
 				JMP @@LOOP_STRING
 
 				@@END_N_LINES:
-				INC DI
-				MOV BYTE PTR DS:[DI], '$'
+				;INC DI
+				;MOV BYTE PTR DS:[DI], '$'
+				MOV [N_LINES], BX
 				CMP CX, 0
 				JZ @@EXIT
 				JMP @@LOOP_STRING
@@ -374,12 +385,24 @@ PARSE_PSP		PROC
 				CMP AL, 32
 				JZ @@END_N_LINES
 				
-				MOV BYTE PTR DS:[DI], AL
-				INC DI
 				MOV N_LINES_CMD, 1
 
 				CMP CX, 0
 				JZ @@EXIT
+
+				MOV AH, 0  
+      			SUB AL, 48   		; ASCII to DECIMAL
+
+				PUSH CX
+      			MOV CL, AL
+      			MOV AL, BL  		; Store the previous value in AL
+				
+      			MUL DL       		; Multiply the previous value with 10
+
+      			ADD AL, CL   		; Previous value + new value ( after previous value is multiplyed with 10 )
+     			MOV BL, AL			; Store the value to BL
+				POP CX
+
 				JMP @@PARSE_N_LINES
 
 				@@LOOP_STRING:
@@ -399,11 +422,11 @@ PARSE_PSP		PROC
 PARSE_PSP		ENDP
 
 MAIN:      
-				MOV AX, @DATA			; Move Data segment to AX
-        		MOV DS, AX				; Store AX to DS
+				MOV AX, @DATA						; Move Data segment to AX
+        		MOV DS, AX							; Store AX to DS
 
 INPUT:
-				CALL GET_PSP
+				CALL GET_PSP						
 				CALL PARSE_PSP
 
 				CMP FILENAME_CMD, 1
@@ -421,13 +444,14 @@ FILENAME_MISSING:
 				JMP TERMINATE
 
 INPUT_LINES_FROM_KEYBOARD:
-				MOV AH, 9				; Vypis Zadaj N spravy
+				MOV AH, 9							; Vypis Zadaj N spravy
 	    		MOV DX, OFFSET MSG
 	    		INT 21H
 				CALL INPUT_N_LINES
 
+
 PROCESS_FILE:
-				CALL FILE_OPEN			; Open the file
+				CALL FILE_OPEN						; Open the file
 				CALL MAIN_FUNCTION
 				CALL FILE_CLOSE
 
