@@ -28,7 +28,7 @@ CMD_BUFFER		DB 128 dup('$')
 HELP			DB 0
 FILENAME_CMD	DB 0
 N_LINES_CMD		DB 0
-HELP_MSG		DB
+HELP_MSG		DB "help??? chod do pixi", 13, 10, '$'
 ;-------------------------------------------------------------
 
 
@@ -110,14 +110,14 @@ GET_PSP			ENDP
 
 PARSE_PSP		PROC
 				
-				XOR CX, CX					; Empty the register
+				XOR CX, CX								; Empty the register
 				MOV CL, [ARG_LENGTH]
 
 				XOR SI, SI
 				XOR DI, DI
 				XOR AX, AX
 				
-				mov si, offset CMD_BUFFER	; SI = pointer to the first character of parameter
+				mov si, offset CMD_BUFFER				; SI = pointer to the first character of parameter
 				JMP @@LOOP_STRING
 
 
@@ -138,7 +138,6 @@ PARSE_PSP		PROC
 				INC SI
 				DEC CX
 				JMP @@LOOP_STRING
-
 
 				@@END_FILENAME:
 				INC DI
@@ -169,7 +168,6 @@ PARSE_PSP		PROC
 				CMP CX, 0
 				JZ @@EXIT
 				JMP @@PARSE_FILENAME
-
 
 				@@PREPARE_TO_PARSE_FILENAME:
 				MOV DI, offset FILENAME
@@ -215,7 +213,6 @@ PARSE_PSP		PROC
 				JZ @@EXIT
 				JMP @@LOOP_STRING
 
-
 				@@EXIT:
 				RET
 
@@ -225,16 +222,11 @@ PARSE_PSP		ENDP
 
 
 START:      
-                
 				MOV AX, @DATA
         		MOV DS, AX
 
                 CALL GET_PSP
 				CALL PARSE_PSP
-
-HELP_MESSAGE:
-				MOV AH, 9
-				MOV DX, offset HELP_MSG
 
 EXIT:   		    
 				MOV AH, 9					; Vypis Zadaj N spravy
@@ -245,7 +237,14 @@ EXIT:
 	    		MOV DX, offset FILENAME
 	    		INT 21H
 				CMP HELP, 1
-				JZ @@HELP_MESSAGE
+				JZ HELP_MESSAGE
+
+HELP_MESSAGE:
+				NEW_LINE
+				MOV AH, 9
+				MOV DX, offset HELP_MSG
+				INT 21h
+				JMP TERMINATE
 
 TERMINATE:
         		MOV AX, 4C00H
