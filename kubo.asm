@@ -195,7 +195,8 @@ MAIN_FUNCTION 	PROC
 				MOV AX, N_LINES				; Load N_LINES to AX
 				SUB LINES_TO_SKIP, AX		; LINES_TO_SKIP (LINES) - N_LINES - calculate how many lines to skip
 				MOV AX, LINES_TO_SKIP		; Move LINES_TO_SKIP to AX
-				CMP AX, 0					; Check if line exists
+				INC AX
+				CMP AX, 0				; Check if line exists
 				JL @@ERR					; Line does not exist
 				JMP @@FIND_POSITION			; Find position of the line
 
@@ -338,7 +339,7 @@ PARSE_PSP		PROC
 				@@END_N_LINES:
 				;INC DI
 				;MOV BYTE PTR DS:[DI], '$'
-				MOV [N_LINES], BX
+				MOV N_LINES, BX
 				CMP CX, 0
 				JZ @@EXIT
 				JMP @@LOOP_STRING
@@ -388,12 +389,13 @@ PARSE_PSP		PROC
 				MOV N_LINES_CMD, 1
 
 				CMP CX, 0
-				JZ @@EXIT
+				JZ @@END_N_LINES
 
 				MOV AH, 0  
       			SUB AL, 48   		; ASCII to DECIMAL
 
 				PUSH CX
+				MOV CH, 0
       			MOV CL, AL
       			MOV AL, BL  		; Store the previous value in AL
 				
@@ -403,6 +405,7 @@ PARSE_PSP		PROC
      			MOV BL, AL			; Store the value to BL
 				POP CX
 
+				
 				JMP @@PARSE_N_LINES
 
 				@@LOOP_STRING:
@@ -429,6 +432,9 @@ INPUT:
 				CALL GET_PSP						
 				CALL PARSE_PSP
 
+				CMP HELP, 1
+				JZ HELP_MESSAGE
+
 				CMP FILENAME_CMD, 1
 				JNZ FILENAME_MISSING
 				
@@ -448,6 +454,13 @@ INPUT_LINES_FROM_KEYBOARD:
 	    		MOV DX, OFFSET MSG
 	    		INT 21H
 				CALL INPUT_N_LINES
+
+HELP_MESSAGE:
+				NEW_LINE
+				MOV AH, 9
+				MOV DX, offset HELP_MSG
+				INT 21h
+				JMP TERMINATE
 
 
 PROCESS_FILE:
