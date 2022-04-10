@@ -232,7 +232,7 @@ MAIN:
 				JNZ FILENAME_MISSING
 				
 				CMP N_LINES_CMD, 1
-				JZ NN_LINES
+				JNZ NN_LINES
 
 				CALL INPUT_N_LINES
 				JMP EXIT
@@ -245,7 +245,6 @@ FILENAME_MISSING:
 				MOV DX, offset FILE_MISS_MSG
 				INT 21H
 				JMP TERMINATE
-
 
 EXIT:   		    
 				MOV AH, 9					; Vypis Zadaj N spravy
